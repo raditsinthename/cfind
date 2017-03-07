@@ -1,4 +1,8 @@
-
+/*
+ CITS2002 Project 2 2016
+ Name(s):		Bradley Morgan , Robert Gross
+ Student number(s):	21730745 , 20495129
+ */
 
 #include <getopt.h>
 
@@ -12,7 +16,7 @@
 #include <sys/stat.h>
 #include <libgen.h>
 
-#include "statexpr.h"
+#include "/cslinux/adhoc/include/statexpr.h"
 #include "cfind.h"
 #include "sort.h"
 
@@ -34,6 +38,7 @@ int r = 0;
 //unlink
 // unlink will be called if the -u option is specified
 void unlinkEntries (void) {
+    bool failed = false;
     if (outputSize > 1) {
         for (int i = outputSize - 2; i > -1; i--) {
             struct stat s;
@@ -44,10 +49,7 @@ void unlinkEntries (void) {
                     if (rmdir(output[i]) != 0) {
                         // removal unsuccessful
                         fprintf(stderr, "Failed to remove %s\n", output[i]);
-                    }
-                    else {
-                        // removal successful
-                        printf("Successfully removed %s\n", output[i]);
+                        failed = true;
                     }
                     
                 }
@@ -56,16 +58,20 @@ void unlinkEntries (void) {
                     if (unlink(output[i]) != 0) {
                         // unlink unsuccessful
                         fprintf(stderr, "Failed to unlink %s.\n", output[i]);
-                    }
-                    else {
-                        printf("Successfully unlinked %s\n", output[i]);
+                        failed = true;
                     }
                 }
             }
             
         }
-        
+        if (failed){
+            exit(EXIT_FAILURE);
+        }
+        else {
+            exit(EXIT_SUCCESS);
+        }
     }
+    
     // unlink root
     // check if directory or file
     struct stat s;
@@ -77,20 +83,12 @@ void unlinkEntries (void) {
                 // removal unsuccessful
                 fprintf(stderr, "Failed to remove %s\n", output[outputSize - 1]);
             }
-            else {
-                // removal successful
-                printf("Successfully removed %s\n", output[outputSize - 1]);
-            }
-            
         }
         else if (S_ISREG(s.st_mode)) {
             // entry is a file
             if (unlink(output[outputSize - 1]) != 0) {
                 // unlink unsuccessful
                 fprintf(stderr, "Failed to unlink %s.\n", output[outputSize - 1]);
-            }
-            else {
-                printf("Successfully unlinked %s\n", output[outputSize - 1]);
             }
         }
     }
@@ -101,6 +99,10 @@ void removeElement (int index) {
 	// move every element after index up one
     for (int i = index; i < size - 1; i++) {
         entries[i] = realloc(entries[i], sizeof(char)*strlen(entries[i+1])+1);
+        if (entries[i] == NULL) {
+            fprintf(stderr, "Memory allocation failed. \n");
+            exit(EXIT_FAILURE);
+        }
         strcpy(entries[i], entries[i+1]);
     }
     size--;
@@ -109,6 +111,15 @@ void removeElement (int index) {
 		fprintf(stderr,"No matching files have been found!.\n");
 		exit(EXIT_FAILURE);
 	}
+}
+
+// removeDotSlash removes "./" from the beginning of paths
+void removeDotSlash(){
+    for (int i = 0; i < outputSize; i++){
+        if (output[i][0] == '.' && output[i][1] == '/') {
+            output[i] += 2;
+        }
+    }
 }
 
 // filterDepth filters the list of entried by a specified depth
@@ -134,6 +145,7 @@ void filterDepth (int depth) {
 	}
 }
 
+// removeDotFiles removes files that begin with '.' from output
 void removeDotFiles(){
     for (int i = 0; i < size; i++){
         if (basename(entries[i])[0] == '.'){
@@ -141,6 +153,20 @@ void removeDotFiles(){
             i--;
         }
     }
+    return;
+}
+
+// usage outputs how to use cfind if too few arguments are provided
+void usage(){
+    printf("usage: cfind [options] pathname [stat-expression]\n");
+    printf("\t-a: consider all entries, including system files beginning with '.' (but excluding '.' and '..' directories\n");
+    printf("\t-c: print the number of files\n");
+    printf("\t-d depth: limit depth of search to depth\n");
+    printf("\t-l: print information about all found files\n");
+    printf("\t-r: reverse order of any sorting options\n");
+    printf("\t-s: sort file-entries by size\n");
+    printf("\t-t: sort file-entries by modification time\n");
+    printf("\t-u: unlink file-entires\n");
     return;
 }
 
@@ -184,18 +210,23 @@ int main(int argc, char *argv[]) {
 			argc = -1;
 		}
 	}
-	
-	if (argc <= 0){
-		//usage(1);
-		opterr++;
-	}
+    
+ 
 	argc -= optind;
 	argv += optind;
 
-	if (argc < 1) {
-		fprintf(stderr,"A pathname is required.\n");
-		exit(EXIT_FAILURE);
-	}
+    /*
+     if this is true, no path name was given. If no pathname was given but a stat expression was
+     (for some strange reason), then the program will assume that the stat expression was the pathname
+     */
+    if (argc < 1){
+        usage();
+        opterr++;
+        fprintf(stderr,"A pathname is required.\n");
+        exit(EXIT_FAILURE);
+    }
+    
+    //get pathname from arguments
 	char *pathname = argv[0];
 
 	// determine stat expression
@@ -209,21 +240,35 @@ int main(int argc, char *argv[]) {
 
 
 	
-	
-	// run a depth-first search starting at pathname
-	dfs(pathname);
-	// add on directory/file searched to end of list
-	totalSize += (sizeof(char) * (strlen(pathname)+1));
-	if (size == 0) {
-		entries = malloc(totalSize);
-	}
-	else {
-		entries = realloc(entries, totalSize);
-	}
-	entries[size] = malloc(sizeof(char)*(strlen(pathname) + 1));
-	strcpy(entries[size], pathname);
-	size++;
-
+    struct stat pathStat;
+    if(stat(pathname,&pathStat) == 0){
+        //if file, add to entries
+        if(S_ISREG(pathStat.st_mode)){
+            totalSize += (sizeof(char) * (strlen(pathname)+1));
+            if (size == 0) {
+                entries = malloc(totalSize);
+            }
+            else {
+                entries = realloc(entries, totalSize);
+            }
+            if (entries == NULL) {
+                fprintf(stderr, "Memory allocation failed. \n");
+                exit(EXIT_FAILURE);
+            }
+            entries[size] = malloc(sizeof(char)*(strlen(pathname) + 1));
+            if (entries[size] == NULL) {
+                fprintf(stderr, "Memory allocation failed. \n");
+                exit(EXIT_FAILURE);
+            }
+            strcpy(entries[size], pathname);
+            size++;
+        }
+        //else (i.e. it's a directory) run a depth-first search starting from pathname
+        else{
+            dfs(pathname);
+        }
+    }
+    // remove files that begin with '.' if a flag is not set
     if (a != 1){
         removeDotFiles();
     }
@@ -236,6 +281,10 @@ int main(int argc, char *argv[]) {
     
 	// output is an array containing all output information relative to requested parameters
 	output = malloc(totalSize);
+    if (output == NULL) {
+        fprintf(stderr, "Memory allocation failed. \n");
+        exit(EXIT_FAILURE);
+    }
 
 	// convert the full locations into just file and folder names
 	for (int i = 0; i < size; i++) {
@@ -245,12 +294,15 @@ int main(int argc, char *argv[]) {
 			if (evaluate_stat_expression(statexp, basename(entries[i]), &thisEntry)) {
 				// entry matches stat expression, added to output
 				output[outputSize] = malloc(sizeof(char)*strlen(entries[i])+1);
+                if (output[outputSize] == NULL) {
+                    fprintf(stderr, "Memory allocation failed. \n");
+                    exit(EXIT_FAILURE);
+                }
                 strcpy(output[outputSize], entries[i]);
 				outputSize++;
 			}
 		}
 		else {
-            // ADD ERROR MESSSAGE HERE!!!!!!!!!!!!!!!!!!!!!!!!!!
 			printf("error at %i\n", i);
 		}
 		
@@ -262,31 +314,35 @@ int main(int argc, char *argv[]) {
 	// check if anything left in output after processing:
 	if (outputSize == 0) {
 		printf("Nothing found!\n");
-		return 0;
+		exit(EXIT_SUCCESS);
 	}
     
+    // check if pathname = '.' and, if so, remove "./" from the front of
+    if (strcmp(pathname,".") == 0){
+        removeDotSlash();
+    }
     // if printing count
     if (c == 1) {
         // print the count and nothing else
         printf("%i\n", outputSize);
-        return 0;
+        exit(EXIT_SUCCESS);
     }
     
     // if unlinking
     if (u == 1){
         unlinkEntries();
-        return 0;
+        exit(EXIT_SUCCESS);
     }
     
     // if printing list data
     if (l == 1){
         listInfo(output,outputSize);
-        return 0;
+        exit(EXIT_SUCCESS);
     }
     
     // if sorting by size
     if (s == 1){
-        qsort(output, outputSize, sizeof(char*), bySize);
+        mergesort(output, outputSize, sizeof(char*), bySize);
     }
     
     // if sorting by time
@@ -294,22 +350,16 @@ int main(int argc, char *argv[]) {
         qsort(output, outputSize, sizeof(char*), byTime);
     }
     
-    // convert output to basenames
-    for (int i = 0; i < outputSize; i++){
-        long unsigned newSize = sizeof(char)* strlen(basename(output[i])+1);
-        char *newOutput = basename(output[i]);
-        output[i] = realloc(output[i], newSize);
-        strcpy(output[i],newOutput);
-    }
-    
+    // if needing to sort alphabetically
     if (s+t == 0){
-        qsort(output, outputSize, sizeof(char*), alphabetical);
+        mergesort(output, outputSize, sizeof(char*), alphabetical);
     }
     
+    //print out final results
     for (int i = 0; i < outputSize; i++) {
-		printf("%s\n", basename(output[i]));
+		printf("%s\n", output[i]);
 		
 	}
 
-	return 0;
+    exit(EXIT_SUCCESS);
 }

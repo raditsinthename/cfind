@@ -1,21 +1,24 @@
-cfind : cfind.o dfs.o listInfo.o statexpr.o parsedate.o sort.o 
-	cc -std=c99 -Wall -pedantic -Werror -o cfind \
-		cfind.o listInfo.o dfs.o statexpr.o parsedate.o sort.o -lm
+PROJECT = cfind
+HEADERS = /cslinux/adhoc/include/statexpr.h cfind.h sort.h
+OBJ = cfind.o dfs.o listInfo.o sort.o
 
-cfind.o : cfind.c cfind.h sort.h
-	cc -std=c99 -Wall -pedantic -Werror -c cfind.c
+C99 = cc -std=c99
+CFLAGS = -Wall -pedantic -Werror
+
+$(PROJECT) : $(OBJ) $(HEADERS)
+	$(C99) $(CFLAGS) -I. /cslinux/adhoc/lib/libstatexpr-osx.a -o $(PROJECT) $(OBJ) -lm
+
+cfind.o : cfind.c $(HEADERS)
+	$(C99) $(CFLAGS) -c cfind.c
 
 dfs.o : dfs.c cfind.h
-	cc -std=c99 -Wall -pedantic -Werror -c dfs.c
+	$(C99) $(CFLAGS) -c dfs.c
 
 listInfo.o : listInfo.c cfind.h
-	cc -std=c99 -Wall -pedantic -Werror -c listInfo.c
-
-statexpr.o : statexpr.c statexpr.h
-	cc -std=c99 -Wall -pedantic -Werror -c statexpr.c
-
-parsedate.o : parsedate.c statexpr.h
-	cc -std=c99 -Wall -pedantic -Werror -c parsedate.c
+	$(C99) $(CFLAGS) -c listInfo.c
 
 sort.o: sort.c cfind.h sort.h
-	cc -std=c99 -Wall -pedantic -Werror -c sort.c
+	$(C99) $(CFLAGS) -c sort.c
+
+clean:
+	rm -f $(PROJECT) $(OBJ)

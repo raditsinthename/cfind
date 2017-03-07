@@ -1,3 +1,9 @@
+/*
+ CITS2002 Project 2 2016
+ Name(s):		Bradley Morgan , Robert Gross
+ Student number(s):	21730745 , 20495129
+ */
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
@@ -13,7 +19,8 @@
 int alphabetical (const void *a, const void *b) {
     const char **ca = (const char **)a;
     const char **cb = (const char **)b;
-    
+   
+    //reverse order if rflag is true
     if (r ==0){
         return strcmp(*ca, *cb);
     }
@@ -31,6 +38,7 @@ int bySize (const void *a, const void *b){
     struct stat sb;
     if(stat(*ca, &sa) == 0){
         if (stat(*cb, &sb) == 0){
+            //reverse order if rflag is true
             if (r == 0){
                 return (int)sa.st_size - (int)sb.st_size;
             }
@@ -51,6 +59,7 @@ int bySize (const void *a, const void *b){
     }
 }
 
+// byTime is implemented by qsort to sort elements by size
 int byTime (const void *a, const void *b){
     const char **ca = (const char **)a;
     const char **cb = (const char **)b;
@@ -59,11 +68,22 @@ int byTime (const void *a, const void *b){
     struct stat sb;
     if(stat(*ca, &sa) == 0){
         if (stat(*cb, &sb) == 0){
+            //if the sizes are equal, sort those elements by size
+            if ((int)sb.st_mtime == (int)sa.st_mtime){
+                //reverse order if rflag is true
+                if (r == 0){
+                    return (int)sb.st_size - (int)sa.st_size;
+                }
+                else{
+                    return (int) sa.st_size - (int)sb.st_size;
+                }
+            }
+            //reverse order if rflag is true
             if (r == 0){
-                return (int)sa.st_mtime - (int)sb.st_mtime;
+                return (int)sb.st_mtime - (int)sa.st_mtime;
             }
             else {
-                return (int)sb.st_mtime - (int)sa.st_mtime;
+                return (int)sa.st_mtime - (int)sb.st_mtime;
             }
         }
         else{

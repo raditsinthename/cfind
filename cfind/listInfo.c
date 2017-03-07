@@ -1,6 +1,13 @@
+/*
+ CITS2002 Project 2 2016
+ Name(s):		Bradley Morgan , Robert Gross
+ Student number(s):	21730745 , 20495129
+ */
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
+#include <string.h>
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <dirent.h>
@@ -32,30 +39,28 @@ void listInfo(char **paths, int pathsSize){
             printf( (s.st_mode & S_IROTH) ? "r" : "-");
             printf( (s.st_mode & S_IWOTH) ? "w" : "-");
             printf( (s.st_mode & S_IXOTH) ? "x" : "-");
-            printf(" ");
+            printf("  ");
             
             //Number of Links
             printf("%d ",s.st_nlink);
-            
-            //Owners Name
-            grp = getgrgid(s.st_gid);
-            printf("%s ", grp->gr_name);
             
             //Group-Owners Name
             pwd = getpwuid(s.st_uid);
             printf("%s ", pwd->pw_name);
             
+            //Owners Name
+            grp = getgrgid(s.st_gid);
+            printf("%s ", grp->gr_name);
+            
             //Size
-            printf("%llu ", s.st_size);
+            printf("%*llu", 8,s.st_size);
+            printf(" ");
             
             //Modification Time
-            printf("%s ", ctime(&s.st_mtime));
+            printf("%s ", strtok(ctime(&s.st_mtime),"\n"));
             
             //Path Name
-            char actualpath [PATH_MAX+1];
-            char *ptr;
-            ptr = realpath(paths[i],actualpath);
-            printf("%s ", actualpath);
+            printf("%s ", paths[i]);
             
             //New Line
             printf("\n");            
