@@ -1,7 +1,7 @@
 # cfind
-A program that searches a directory for specified criteria and returns a list of all directories and files that match
+A program that searches a directory for specified criteria and returns a list of all directories and files that match. Created by Myself and Robert Gross.
 
-This program was created as an assignment for CITS2002 Systems Programming at The University of Western Australia. the functionality and usage is as follows.
+This program was created as an assignment for CITS2002 Systems Programming at The University of Western Australia. the functionality and usage is as follows. 
 
 >> cfind [options] pathname [stat-expression]
 
@@ -33,4 +33,3 @@ Print matching file-entries, sorted by modification time. If both -s and -t are 
 
 -u
 Attempt to unlink (remove) as many matching file-entries as possible. The cfind utility should exit with failure if any attempt to unlink a file-entry was unsuccessful.
-
